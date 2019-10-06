@@ -1,15 +1,52 @@
-# Read the papge end to end asr
+import click
+import torch
+import numpy as np
+import random
 
-# ToDo - stage 2: Dictionary and Json Data Preparation
 
-# Need to prepare json
+def seed(config=None):
 
-"""
-	Check if this stage is really needed as for end to end asr this should not be
-"""
+	# This removes randomness, makes everything deterministic
 
-# ToDo - stage 4: Network Training
+	if config is None:
+		import config
 
-# ToDo - stage 5: Decoding
+	np.random.seed(config.seed)
+	random.seed(config.seed)
+	torch.manual_seed(config.seed)
+	torch.cuda.manual_seed(config.seed)
+	torch.backends.cudnn.deterministic = True
 
-# ToDo - stage 6: Recog testing
+
+@click.group()
+def main():
+	seed()
+	pass
+
+
+@main.command()
+def train():
+
+	import train
+
+	print('Starting Training')
+	train.main()
+
+
+@main.command()
+def pre_process():
+
+	import dataloader
+	import unigram_gen
+
+	dataloader.DataLoaderTrain()
+	dataloader.DataLoaderRecog()
+	dataloader.DataLoaderDev()
+
+	unigram_gen.create_unigram_model()
+	unigram_gen.create_json()
+
+
+if __name__ == "__main__":
+
+	main()

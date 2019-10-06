@@ -23,3 +23,11 @@ rmlsutt = {
 	'max_chars': 400,
 	'min_chars': 0,
 }
+
+seed = 1
+
+train_param = {
+	'batch_size': 10,
+	'num_workers': 8,
+	'lr': 1e-4,
+}

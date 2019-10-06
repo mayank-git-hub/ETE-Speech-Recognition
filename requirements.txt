@@ -1,2 +1,5 @@
 sentencepiece==0.1.83
 tqdm==4.32.1
+click==6.7
+numpy==1.17.0
+editdistance==0.5.3
