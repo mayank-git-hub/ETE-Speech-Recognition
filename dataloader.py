@@ -3,6 +3,8 @@ import config
 import os
 import pickle
 import soundfile as sf
+from tinytag import TinyTag
+from tqdm import tqdm
 
 
 def load_filename(dataset, cache_name):
@@ -22,11 +24,11 @@ def load_filename(dataset, cache_name):
 
 				gender_mapping[i[0].lstrip().rstrip()] = i[1].lstrip().rstrip()
 
-		for set_i in dataset:
+		for set_i in tqdm(dataset):
 
 			path_1 = config.path_to_download + '/' + set_i
 
-			for speaker_i in sorted(os.listdir(path_1)):
+			for speaker_i in tqdm(sorted(os.listdir(path_1))):
 
 				if speaker_i == '.complete':
 					continue
@@ -55,9 +57,9 @@ def load_filename(dataset, cache_name):
 							if config.rmlsutt['min_chars'] < len(transcript.replace(' ', '')) < config.rmlsutt['max_chars']:
 
 								flac_path = path_3 + '/' + speaker_i + '-' + chapter_i + '-' + sentence_i + '.flac'
-								output = os.popen('file ' + flac_path).read()
-								num_samples = int(output.split()[-2])
-								sample_rate = int(output.split()[-4])*1000
+								tag = TinyTag.get(flac_path)
+								num_samples = tag.duration*tag.samplerate
+								sample_rate = tag.samplerate
 
 								assert sample_rate == config.fbank['rate'], 'Rate is different than in fbank'
 

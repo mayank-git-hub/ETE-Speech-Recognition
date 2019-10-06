@@ -1,0 +1,2 @@
+sentencepiece==0.1.83
+tqdm==4.32.1
