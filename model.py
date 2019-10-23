@@ -9,8 +9,6 @@ from distutils.util import strtobool
 from itertools import groupby
 
 from pytorch_backend.ctc import CTC
-from pytorch_backend.e2e_asr import CTC_LOSS_THRESHOLD
-from pytorch_backend.e2e_asr import Reporter
 from pytorch_backend.nets_utils import make_pad_mask
 from pytorch_backend.nets_utils import th_accuracy
 from pytorch_backend.transformer.attention import MultiHeadedAttention
@@ -19,6 +17,8 @@ from pytorch_backend.transformer.encoder import Encoder
 from pytorch_backend.transformer.label_smoothing_loss import LabelSmoothingLoss
 from pytorch_backend.transformer.layer_norm import LayerNorm
 from pytorch_backend.transformer.plot import PlotAttentionReport
+
+CTC_LOSS_THRESHOLD = 10000
 
 
 def subsequent_mask(size, device="cpu", dtype=torch.uint8):
@@ -452,7 +452,6 @@ class E2E(ASRInterface, torch.nn.Module):
 		self.odim = odim
 		self.ignore_id = ignore_id
 		self.subsample = [1]
-		self.reporter = Reporter()
 
 		# self.lsm_weight = a
 		self.criterion = LabelSmoothingLoss(self.odim, self.ignore_id, args.lsm_weight,
@@ -582,7 +581,7 @@ class E2E(ASRInterface, torch.nn.Module):
 
 		loss_data = float(self.loss)
 		if loss_data < CTC_LOSS_THRESHOLD and not math.isnan(loss_data):
-			self.reporter.report(loss_ctc_data, loss_att_data, self.acc, cer_ctc, cer, wer, loss_data)
+			print(loss_ctc_data, loss_att_data, self.acc, cer_ctc, cer, wer, loss_data)
 		else:
 			print('loss (=%f) is not correct', loss_data)
 		return self.loss

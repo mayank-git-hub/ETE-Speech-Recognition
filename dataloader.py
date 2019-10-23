@@ -5,6 +5,9 @@ import pickle
 import soundfile as sf
 from tinytag import TinyTag
 from tqdm import tqdm
+import torch
+import json
+import numpy as np
 
 
 def load_filename(dataset, cache_name):
@@ -100,13 +103,32 @@ def load_filename(dataset, cache_name):
 	return all_flat
 
 
-def get_audio_from_data(all_data, item):
+def get_audio_from_data(all_data, all_meta, item):
 
 	speaker_id, chapter_id, sentence_id, trans, path, gender = all_data[item]
 
+	target_ = all_meta['utts'][str(speaker_id) + '-' + str(chapter_id) + '-' + str(sentence_id)]['output'][0]
+
 	audio, rate = sf.read(path)
 
-	return audio
+	return audio, target_['text'], target_['token'], np.array(target_['tokenid'].split()).astype(np.int32)
+
+
+def my_collate(batch):
+
+	all_audio = []
+	all_text = []
+	all_token = []
+	all_token_id = []
+
+	for (audio, text, token, token_id) in batch:
+
+		all_audio.append(torch.from_numpy(audio).float())
+		all_text.append(text)
+		all_token.append(token)
+		all_token_id.append(torch.from_numpy(token_id).long())
+
+	return all_audio, all_text, all_token, all_token_id
 
 
 class DataLoaderTrain(data.Dataset):
@@ -114,10 +136,12 @@ class DataLoaderTrain(data.Dataset):
 	def __init__(self):
 
 		self.all_data = load_filename(config.train_set, 'DataLoaderTrain.cache')
+		with open('Cache/json_data/train.json', 'r') as f:
+			self.all_meta = json.load(f)
 
 	def __getitem__(self, item):
 
-		return get_audio_from_data(self.all_data, item)
+		return get_audio_from_data(self.all_data, self.all_meta, item)
 
 	def __len__(self):
 
@@ -129,10 +153,12 @@ class DataLoaderRecog(data.Dataset):
 	def __init__(self):
 
 		self.all_data = load_filename(config.recog_set, 'DataLoaderRecog.cache')
+		with open('Cache/json_data/recog.json', 'r') as f:
+			self.all_meta = json.load(f)
 
 	def __getitem__(self, item):
 
-		return get_audio_from_data(self.all_data, item)
+		return get_audio_from_data(self.all_data, self.all_meta, item)
 
 	def __len__(self):
 
@@ -144,10 +170,12 @@ class DataLoaderDev(data.Dataset):
 	def __init__(self):
 
 		self.all_data = load_filename(config.train_dev, 'DataLoaderDev.cache')
+		with open('Cache/json_data/dev.json', 'r') as f:
+			self.all_meta = json.load(f)
 
 	def __getitem__(self, item):
 
-		return get_audio_from_data(self.all_data, item)
+		return get_audio_from_data(self.all_data, self.all_meta, item)
 
 	def __len__(self):
 
@@ -156,6 +184,12 @@ class DataLoaderDev(data.Dataset):
 
 if __name__ == "__main__":
 
-	DataLoaderTrain()
-	DataLoaderRecog()
-	DataLoaderDev()
+	from torch.utils.data import DataLoader
+
+	dev_loader = DataLoader(DataLoaderDev(), batch_size=5, num_workers=5, collate_fn=my_collate)
+	train_loader = DataLoader(DataLoaderTrain(), batch_size=5, num_workers=5, collate_fn=my_collate)
+	recog_loader = DataLoader(DataLoaderRecog(), batch_size=5, num_workers=5, collate_fn=my_collate)
+
+	for (audio, text, token, token_id) in dev_loader:
+		print(text, token_id)
+		exit(1)

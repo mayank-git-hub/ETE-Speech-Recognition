@@ -1,6 +1,6 @@
 import logging
 
-from espnet.asr import asr_utils
+from pytorch_backend import asr_utils
 import matplotlib.pyplot as plt
 
 

@@ -2,7 +2,7 @@ import torch
 
 
 class NoamOpt(object):
-    "Optim wrapper that implements rate."
+    """Optim wrapper that implements rate."""
 
     def __init__(self, model_size, factor, warmup, optimizer):
         self.optimizer = optimizer
@@ -17,7 +17,7 @@ class NoamOpt(object):
         return self.optimizer.param_groups
 
     def step(self):
-        "Update parameters and rate"
+        """Update parameters and rate"""
         self._step += 1
         rate = self.rate()
         for p in self.optimizer.param_groups:
@@ -26,7 +26,7 @@ class NoamOpt(object):
         self.optimizer.step()
 
     def rate(self, step=None):
-        "Implement `lrate` above"
+        """Implement `lrate` above"""
         if step is None:
             step = self._step
         return self.factor * self.model_size ** (-0.5) \

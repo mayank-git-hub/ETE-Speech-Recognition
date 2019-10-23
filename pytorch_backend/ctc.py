@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from espnet.nets.pytorch_backend.nets_utils import to_device
+from .nets_utils import to_device
 
 
 class CTC(torch.nn.Module):
@@ -29,7 +29,7 @@ class CTC(torch.nn.Module):
             self.ctc_loss = torch.nn.CTCLoss(reduction=reduction_type)
         elif self.ctc_type == 'warpctc':
             import warpctc_pytorch as warp_ctc
-            self.ctc_loss = warp_ctc.CTCLoss(size_average=True, reduce=reduce)
+            self.ctc_loss = warp_ctc.CTCLoss(size_average=True)
         else:
             raise ValueError('ctc_type must be "builtin" or "warpctc": {}'
                              .format(self.ctc_type))
