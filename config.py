@@ -3,15 +3,14 @@ from datetime import datetime
 from specific_config import *
 import shutil
 
-
 list_to_download = [
-	'dev-clean''test-clean''dev-other''test-other''train-clean-100''train-clean-360''train-other-500']
+	'dev-clean', 'test-clean', 'dev-other', 'test-other', 'train-clean-100', 'train-clean-360', 'train-other-500']
 cache_dir = 'Cache'
 url_base = 'www.openslr.org/resources/12/'
 
-train_set = ['train-clean-100''train-clean-360''train-other-500']
-train_dev = ['dev-clean''dev-other']
-recog_set = ['test-clean''test-other''dev-clean''dev-other']
+train_set = ['train-clean-100', 'train-clean-360', 'train-other-500']
+train_dev = ['dev-clean', 'dev-other']
+recog_set = ['test-clean', 'test-other', 'dev-clean', 'dev-other']
 
 fbank = {
 	'pre_emphasis': 0.97,
