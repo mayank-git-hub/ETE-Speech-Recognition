@@ -150,9 +150,11 @@ def my_collate(batch):
 
 class DataLoaderTrain(data.Dataset):
 
-	def __init__(self):
+	def __init__(self, only_all_data=False):
 
 		self.all_data = load_filename(config.train_set, 'DataLoaderTrain.cache')
+		if only_all_data:
+			return
 		with open('Cache/json_data/train.json', 'r') as f:
 			self.all_meta = json.load(f)
 

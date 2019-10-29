@@ -3,36 +3,39 @@ import os
 from dataloader import DataLoaderTrain, DataLoaderDev, DataLoaderRecog
 from tqdm import tqdm
 import json
+import config
 
 
 def create_unigram_model():
 
-	all_data = DataLoaderTrain().all_data
+	os.makedirs(config.cache_dir + '/json_data', exist_ok=True)
 
-	os.makedirs('Cache/unigram_model', exist_ok=True)
+	all_data = DataLoaderTrain(only_all_data=True).all_data
 
-	if not os.path.exists('Cache/unigram_model/All_Transcript.txt'):
+	os.makedirs(config.cache_dir + '/unigram_model', exist_ok=True)
+
+	if not os.path.exists(config.cache_dir + '/unigram_model/All_Transcript.txt'):
 		print('Creating All Transcripts')
-		with open('Cache/unigram_model/All_Transcript.txt', 'w') as writer:
+		with open(config.cache_dir + '/unigram_model/All_Transcript.txt', 'w') as writer:
 			for sentence in tqdm(all_data):
 				writer.write(sentence[3]+'\n')
 
-	if not (os.path.exists('Cache/unigram_model/unigram.model') and os.path.exists('Cache/unigram_model/unigram.vocab')):
+	if not (os.path.exists(config.cache_dir + '/unigram_model/unigram.model') and os.path.exists(config.cache_dir + '/unigram_model/unigram.vocab')):
 		sp.SentencePieceTrainer.Train(
-			'--input=Cache/unigram_model/All_Transcript.txt '
+			'--input=' + config.cache_dir + '/unigram_model/All_Transcript.txt '
 			'--vocab_size=5000 '
 			'--model_type=unigram '
-			'--model_prefix=Cache/unigram_model/unigram '
+			'--model_prefix=' + config.cache_dir + '/unigram_model/unigram '
 			'--input_sentence_size=100000000'
 		)
 
-	if not os.path.exists('Cache/unigram_model/unigram_units.txt'):
+	if not os.path.exists(config.cache_dir + '/unigram_model/unigram_units.txt'):
 		spm = sp.SentencePieceProcessor()
-		spm.load('Cache/unigram_model/unigram.model')
+		spm.load(config.cache_dir + '/unigram_model/unigram.model')
 
 		encoded_output = set()
 
-		with open('Cache/unigram_model/All_Transcript.txt', 'r') as f:
+		with open(config.cache_dir + '/unigram_model/All_Transcript.txt', 'r') as f:
 			print('Reading the transcript')
 			all_text = []
 			for i in f:
@@ -42,7 +45,7 @@ def create_unigram_model():
 
 		print('First done')
 		encoded_output = sorted(list(set(encoded_output)))
-		with open('Cache/unigram_model/unigram_units.txt', 'w') as f:
+		with open(config.cache_dir + '/unigram_model/unigram_units.txt', 'w') as f:
 			print('Writing the encoded units output')
 			f.write('<unk> 1\n')
 			for no, encoded in enumerate(tqdm(encoded_output)):
@@ -79,37 +82,37 @@ def create_json_(all_data, spm, piece_to_id):
 
 def create_json():
 
-	os.makedirs('Cache/json_data', exist_ok=True)
+	os.makedirs(config.cache_dir + '/json_data', exist_ok=True)
 
 	spm = sp.SentencePieceProcessor()
-	spm.load('Cache/unigram_model/unigram.model')
+	spm.load(config.cache_dir + '/unigram_model/unigram.model')
 	piece_to_id = {}
 
-	with open('Cache/unigram_model/unigram_units.txt', 'r') as f:
+	with open(config.cache_dir + '/unigram_model/unigram_units.txt', 'r') as f:
 		for i in f:
 			piece_to_id[i.split()[0]] = i.split()[1]
 
-	if not os.path.exists('Cache/json_data/recog.json'):
+	if not os.path.exists(config.cache_dir + '/json_data/recog.json'):
 		print('Recog json')
 		recog_json = create_json_(DataLoaderRecog().all_data, spm, piece_to_id)
 
-		with open('Cache/json_data/recog.json', 'w', encoding='utf8') as f:
+		with open(config.cache_dir + '/json_data/recog.json', 'w', encoding='utf8') as f:
 
 			json.dump(recog_json, f, indent=4, separators=(',', ': '), sort_keys=True, ensure_ascii=False)
 
-	if not os.path.exists('Cache/json_data/dev.json'):
+	if not os.path.exists(config.cache_dir + '/json_data/dev.json'):
 		print('Dev json')
 		dev_json = create_json_(DataLoaderDev().all_data, spm, piece_to_id)
 
-		with open('Cache/json_data/dev.json', 'w', encoding='utf8') as f:
+		with open(config.cache_dir + '/json_data/dev.json', 'w', encoding='utf8') as f:
 
 			json.dump(dev_json, f, indent=4, separators=(',', ': '), sort_keys=True, ensure_ascii=False)
 
-	if not os.path.exists('Cache/json_data/train.json'):
+	if not os.path.exists(config.cache_dir + '/json_data/train.json'):
 		print('Train json')
 		train_json = create_json_(DataLoaderTrain().all_data, spm, piece_to_id)
 
-		with open('Cache/json_data/train.json', 'w', encoding='utf8') as f:
+		with open(config.cache_dir + '/json_data/train.json', 'w', encoding='utf8') as f:
 
 			json.dump(train_json, f, indent=4, separators=(',', ': '), sort_keys=True, ensure_ascii=False)
 
