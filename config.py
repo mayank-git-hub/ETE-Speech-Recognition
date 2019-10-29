@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 from specific_config import *
+import shutil
+
 
 list_to_download = [
 	'dev-clean''test-clean''dev-other''test-other''train-clean-100''train-clean-360''train-other-500']
@@ -33,6 +35,7 @@ CTC_LOSS_THRESHOLD = 10000
 
 model_save_path = base_model_path + str(datetime.time(datetime.now()))
 os.makedirs(model_save_path, exist_ok=True)
+shutil.copyfile('config.py', model_save_path + '/config.py')
 
 use_cuda = True
 
@@ -42,6 +45,11 @@ train_param = {
 	'lr': 5.0,
 	'adim': 256,
 	'transformer_warmup_steps': 25000,
+}
+
+test_param = {
+	'batch_size': 10,
+	'num_workers': 8,
 }
 
 

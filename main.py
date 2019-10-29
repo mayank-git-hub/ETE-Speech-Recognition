@@ -34,6 +34,15 @@ def train():
 
 
 @main.command()
+def test():
+
+	import test
+
+	print('Starting Testing')
+	test.main()
+
+
+@main.command()
 def pre_process():
 
 	import dataloader

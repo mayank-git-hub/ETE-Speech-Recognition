@@ -63,8 +63,8 @@ def train(model, optimizer):
 				'Avg. Loss: {3:.4f} | '
 				'Loss_Att: {1:.4f} | '
 				'Avg Loss_Att: {4:.4f} | '
-				'Avg Loss_CTC: {5:.4f} | '
-				'Loss_CTC: {2:.4f}'.format(
+				'Loss_CTC: {2:.4f} | '
+				'Avg Loss_CTC: {5:.4f}'.format(
 					loss.item(),
 					loss_att.item(),
 					loss_ctc.item(),
@@ -99,10 +99,6 @@ def main():
 		model, config.train_param['adim'], config.train_param['transformer_warmup_steps'], config.train_param['lr'])
 
 	train(model, optimizer)
-
-	# ToDo - Implement tester
-	# ToDo - Check with multiple GPUs
-	# ToDo - Create a model with 10 epochs
 
 
 if __name__ == "__main__":

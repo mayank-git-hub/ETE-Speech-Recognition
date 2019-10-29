@@ -618,13 +618,6 @@ class E2E(ASRInterface, torch.nn.Module):
 				ys_hat = self.ctc.argmax(hs_pad.view(batch_size, -1, self.adim)).data
 				cer_ctc = self.error_calculator(ys_hat.cpu(), ys_pad.cpu(), is_ctc=True)
 
-		# 5. compute cer/wer
-		if self.training or self.error_calculator is None:
-			cer, wer = None, None
-		else:
-			ys_hat = pred_pad.argmax(dim=-1)
-			cer, wer = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
-
 		# copyied from e2e_asr
 		alpha = self.mtlalpha
 		if alpha == 0:
@@ -634,7 +627,13 @@ class E2E(ASRInterface, torch.nn.Module):
 		else:
 			self.loss = alpha * loss_ctc + (1 - alpha) * loss_att
 
-		return self.loss, loss_att, loss_ctc
+		# 5. compute cer/wer
+		if self.training or self.error_calculator is None:
+			return self.loss, loss_att, loss_ctc
+		else:
+			ys_hat = pred_pad.argmax(dim=-1)
+			cer, wer = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
+			return self.loss, loss_att, loss_ctc, cer, wer, ys_hat, ys_pad
 
 	def recognize(self, feat, recog_args, char_list=None, rnnlm=None, use_jit=False):
 		"""recognize feat
