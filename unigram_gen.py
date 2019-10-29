@@ -94,7 +94,7 @@ def create_json():
 
 	if not os.path.exists(config.cache_dir + '/json_data/recog.json'):
 		print('Recog json')
-		recog_json = create_json_(DataLoaderRecog().all_data, spm, piece_to_id)
+		recog_json = create_json_(DataLoaderRecog(only_all_data=True).all_data, spm, piece_to_id)
 
 		with open(config.cache_dir + '/json_data/recog.json', 'w', encoding='utf8') as f:
 
@@ -102,7 +102,7 @@ def create_json():
 
 	if not os.path.exists(config.cache_dir + '/json_data/dev.json'):
 		print('Dev json')
-		dev_json = create_json_(DataLoaderDev().all_data, spm, piece_to_id)
+		dev_json = create_json_(DataLoaderDev(only_all_data=True).all_data, spm, piece_to_id)
 
 		with open(config.cache_dir + '/json_data/dev.json', 'w', encoding='utf8') as f:
 
@@ -110,7 +110,7 @@ def create_json():
 
 	if not os.path.exists(config.cache_dir + '/json_data/train.json'):
 		print('Train json')
-		train_json = create_json_(DataLoaderTrain().all_data, spm, piece_to_id)
+		train_json = create_json_(DataLoaderTrain(only_all_data=True).all_data, spm, piece_to_id)
 
 		with open(config.cache_dir + '/json_data/train.json', 'w', encoding='utf8') as f:
 

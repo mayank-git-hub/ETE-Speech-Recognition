@@ -75,8 +75,8 @@ def train(model, optimizer):
 
 		cur_time = datetime.time(datetime.now())
 
-		with open(config.model_save_path + '/LibriSpeech_train960.{0}.{1}.{2}.pth'.format(
-					epoch_i, np.mean(all_loss), cur_time)) as f:
+		with open(config.model_save_path + '/LibriSpeech_train960.{0}.{1:.4f}.{2}.pth'.format(
+					epoch_i, np.mean(all_loss), cur_time), 'wb') as f:
 
 			torch.save({
 				'model': model.state_dict(),
