@@ -8,6 +8,7 @@ import torch
 import numpy as np
 from datetime import datetime
 from torch import nn
+from unigram_gen import create_unigram_model, create_json
 
 
 def train(model, optimizer):
@@ -88,6 +89,9 @@ def train(model, optimizer):
 
 
 def main():
+
+	create_unigram_model()
+	create_json()
 
 	model = E2E(idim=80, odim=5002, args=config.ModelArgs())
 
