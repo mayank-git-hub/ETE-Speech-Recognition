@@ -169,9 +169,11 @@ class DataLoaderTrain(data.Dataset):
 
 class DataLoaderRecog(data.Dataset):
 
-	def __init__(self):
+	def __init__(self, only_all_data=False):
 
 		self.all_data = load_filename(config.recog_set, 'DataLoaderRecog.cache')
+		if only_all_data:
+			return
 		with open('Cache/json_data/recog.json', 'r') as f:
 			self.all_meta = json.load(f)
 
@@ -186,9 +188,11 @@ class DataLoaderRecog(data.Dataset):
 
 class DataLoaderDev(data.Dataset):
 
-	def __init__(self):
+	def __init__(self, only_all_data=False):
 
 		self.all_data = load_filename(config.train_dev, 'DataLoaderDev.cache')
+		if only_all_data:
+			return
 		with open('Cache/json_data/dev.json', 'r') as f:
 			self.all_meta = json.load(f)
 
