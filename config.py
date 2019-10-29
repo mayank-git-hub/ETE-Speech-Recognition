@@ -13,7 +13,7 @@ fbank = {
 	'frame_size': 0.025,
 	'frame_stride': 0.01,
 	'n_fft': 512,
-	'nfilt': 40,
+	'nfilt': 80,
 	'rate': 16000,
 }
 
@@ -25,6 +25,9 @@ rmlsutt = {
 }
 
 seed = 1
+num_epochs = 10
+
+use_cuda = True
 
 train_param = {
 	'batch_size': 10,

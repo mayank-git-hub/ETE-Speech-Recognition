@@ -7,6 +7,7 @@ from argparse import Namespace
 import editdistance
 from distutils.util import strtobool
 from itertools import groupby
+import torch.nn.functional as F
 
 from pytorch_backend.ctc import CTC
 from pytorch_backend.nets_utils import make_pad_mask
@@ -160,7 +161,8 @@ class ASRInterface(object):
 	def add_arguments(parser):
 		return parser
 
-	def forward(self, xs, ilens, ys):
+	def forward(self, audio, ys):
+		# xs, ilens are computed from audio using the pre_process model
 		"""compute loss for training
 
 		:param xs:
@@ -311,7 +313,7 @@ class PreProcess(nn.Module):
 	def __init__(self):
 		super(PreProcess, self).__init__()
 
-	def forward(self, data):
+	def single_pass(self, data):
 		# ToDo - write unit test function for calculate_fbank
 		# ToDo - write the code for generating pitch features
 
@@ -322,38 +324,51 @@ class PreProcess(nn.Module):
 		nfilt = config.fbank['nfilt']
 		rate = config.fbank['rate']
 
-		data = torch.from_numpy(data)
+		emphasized_data = torch.zeros_like(data).float()
 
-		emphasized_data = torch.zeros_like(data)
+		if config.use_cuda:
+			emphasized_data = emphasized_data.cuda()
+
 		emphasized_data[1:] = data[1:] - pre_emphasis * data[:-1]
 		emphasized_data[0] = data[0]
 
 		frame_length, frame_step = frame_size * rate, frame_stride * rate  # Convert from seconds to samples
 		frame_length = int(round(frame_length))
 		frame_step = int(round(frame_step))
-		num_frames = int(
-			math.ceil(abs(data.shape[0] - frame_length)) / frame_step)  # Make sure that we have at least 1 frame
+		num_frames = int(abs(data.shape[0] - frame_length) / frame_step) + 1  # Make sure that we have at least 1 frame
 
 		pad_signal_length = num_frames * frame_step + frame_length
+
 		z = torch.zeros((pad_signal_length - data.shape[0]))
-		pad_signal = torch.stack((emphasized_data, z), dim=0)
+
+		if config.use_cuda:
+			z = z.cuda()
+
+		pad_signal = torch.cat((emphasized_data, z), dim=0)
 
 		indices = \
 			torch.arange(frame_length).repeat(num_frames, 1) + \
 			torch.arange(0, num_frames * frame_step, frame_step).repeat(frame_length, 1).transpose(1, 0)
 
 		frames = pad_signal[indices.long()]
-		frames *= torch.hamming_window(frame_length)
+
+		if config.use_cuda:
+			frames *= torch.hamming_window(frame_length).cuda()
+		else:
+			frames *= torch.hamming_window(frame_length)
 
 		# ToDo - shifting back to torch because of no parameters to change n_fft
 
-		frames = frames.numpy()
+		frames = frames.cpu().numpy()
 		mag_frames = np.absolute(np.fft.rfft(frames, n_fft))  # Magnitude of the FFT
 		pow_frames = ((1.0 / n_fft) * (mag_frames ** 2))  # Power Spectrum
 
 		# Shifting back to torch
 
-		pow_frames = torch.from_numpy(pow_frames)
+		pow_frames = torch.from_numpy(pow_frames).float()
+
+		if config.use_cuda:
+			pow_frames = pow_frames.cuda()
 
 		#############################################################################
 
@@ -363,29 +378,73 @@ class PreProcess(nn.Module):
 		hz_points = (700 * (torch.pow(mel_points / 2595, 10) - 1))  # Convert Mel to Hz
 		bin_ = torch.floor((n_fft + 1) * hz_points / rate)
 
-		fbank = torch.zeros((nfilt, int(torch.floor(n_fft / 2 + 1))))
+		fbank = torch.zeros((nfilt, int(math.floor(n_fft / 2 + 1)))).float()
+
+		if config.use_cuda:
+			fbank = fbank.cuda()
+			bin_ = bin_.cuda()
 
 		# ToDo - Check if this for loop can be removed
 
 		for m in range(1, nfilt + 1):
+
 			f_m_minus = int(bin_[m - 1])  # left
 			f_m = int(bin_[m])  # center
 			f_m_plus = int(bin_[m + 1])  # right
 
 			# ToDo - Check if this arange works as expected
 
-			fbank[m - 1, torch.arange(f_m_minus, f_m)] = (torch.arange(f_m_minus, f_m) - bin_[m - 1]) / (
-					bin_[m] - bin_[m - 1])
-			fbank[m - 1, torch.arange(f_m, f_m_plus)] = (bin_[m + 1] - torch.arange(f_m, f_m_plus)) / (
-					bin_[m + 1] - bin_[m])
+			index_1 = torch.arange(f_m_minus, f_m)
+			index_2 = torch.arange(f_m, f_m_plus)
 
-		filter_banks = torch.dot(pow_frames, fbank.transpose(1, 0))
-		filter_banks = torch.where(filter_banks == 0, np.finfo(float).eps, filter_banks)  # Numerical Stability
+			if config.use_cuda:
+				index_1 = index_1.cuda()
+				index_2 = index_2.cuda()
+
+			fbank[m - 1, index_1] = ((index_1 - bin_[m - 1]) / (
+					bin_[m] - bin_[m - 1])).float()
+			fbank[m - 1, index_2] = ((bin_[m + 1] - index_2) / (
+					bin_[m + 1] - bin_[m])).float()
+
+		filter_banks = torch.matmul(pow_frames, fbank.transpose(1, 0))
+		filter_banks = torch.from_numpy(
+			np.where((filter_banks == 0).cpu(), np.finfo(float).eps, filter_banks.cpu())).float()  # Numerical Stability
+
+		if config.use_cuda:
+			filter_banks = filter_banks.cuda()
+
 		filter_banks = 20 * torch.log10(filter_banks)  # dB
 
 		filter_banks -= (torch.mean(filter_banks, dim=0) + 1e-8)
 
 		return filter_banks
+
+	def forward(self, data):
+
+		all_output = []
+		all_length = []
+
+		max_ = 0
+
+		for data_i in data:
+
+			process_i = self.single_pass(data_i)
+			all_output.append(process_i)
+			all_length.append(process_i.shape[0])
+			max_ = max(process_i.shape[0], max_)
+
+		for all_output_i in range(len(all_output)):
+
+			all_output[all_output_i] = F.pad(
+				all_output[all_output_i],
+				[0, 0, 0, max_ - all_output[all_output_i].shape[0]],
+				mode='constant',
+				value=0
+			).unsqueeze(0)
+
+		all_output = torch.cat(all_output, dim=0)
+
+		return all_output, torch.LongTensor(all_length)
 
 
 class E2E(ASRInterface, torch.nn.Module):
@@ -512,7 +571,13 @@ class E2E(ASRInterface, torch.nn.Module):
 		m = subsequent_mask(ys_mask.size(-1), device=ys_mask.device).unsqueeze(0)
 		return ys_mask.unsqueeze(-2) & m
 
-	def forward(self, xs_pad, ilens, ys_pad):
+	def forward(self, audio, ys_pad):
+
+		xs_pad, ilens = self.pre_process(audio)
+
+		if config.use_cuda:
+			xs_pad = xs_pad.cuda()
+
 		'''E2E forward
 
 		:param torch.Tensor xs_pad: batch of padded source sequences (B, Tmax, idim)
@@ -525,8 +590,6 @@ class E2E(ASRInterface, torch.nn.Module):
 		:return: accuracy in attention decoder
 		:rtype: float
 		'''
-
-		xs_pad = self.pre_process(xs_pad)
 
 		# forward encoder
 		xs_pad = xs_pad[:, :max(ilens)]  # for data parallel

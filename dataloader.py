@@ -8,6 +8,7 @@ from tqdm import tqdm
 import torch
 import json
 import numpy as np
+import torch.nn.functional as F
 
 
 def load_filename(dataset, cache_name):
@@ -111,24 +112,40 @@ def get_audio_from_data(all_data, all_meta, item):
 
 	audio, rate = sf.read(path)
 
-	return audio, target_['text'], target_['token'], np.array(target_['tokenid'].split()).astype(np.int32)
+	return audio, path, target_['text'], target_['token'], np.array(target_['tokenid'].split()).astype(np.int32)
 
 
 def my_collate(batch):
 
 	all_audio = []
+	all_path = []
 	all_text = []
 	all_token = []
 	all_token_id = []
 
-	for (audio, text, token, token_id) in batch:
+	max_y = 0
+
+	for (audio, path, text, token, token_id) in batch:
 
 		all_audio.append(torch.from_numpy(audio).float())
+		all_path.append(path)
 		all_text.append(text)
 		all_token.append(token)
 		all_token_id.append(torch.from_numpy(token_id).long())
+		max_y = max(max_y, token_id.shape[0])
 
-	return all_audio, all_text, all_token, all_token_id
+	for all_token_id_i in range(len(all_token_id)):
+
+		all_token_id[all_token_id_i] = F.pad(
+			all_token_id[all_token_id_i],
+			[0, max_y - all_token_id[all_token_id_i].shape[0]],
+			mode='constant',
+			value=-1
+		).unsqueeze(0)
+
+	all_token_id = torch.cat(all_token_id, dim=0)
+
+	return all_audio, all_path, all_text, all_token, all_token_id
 
 
 class DataLoaderTrain(data.Dataset):
@@ -183,13 +200,19 @@ class DataLoaderDev(data.Dataset):
 
 
 if __name__ == "__main__":
+	"""
+		Dataloader should produce 
+			1) audio array
+			2) path to audio array
+			3) Token transcript
+			4) Token ID transcript
+			5) Word transcript
+
+		After dataloader gives the output, all the ys should be padded to get the same size, (pad with -1)
+	"""
 
 	from torch.utils.data import DataLoader
 
 	dev_loader = DataLoader(DataLoaderDev(), batch_size=5, num_workers=5, collate_fn=my_collate)
 	train_loader = DataLoader(DataLoaderTrain(), batch_size=5, num_workers=5, collate_fn=my_collate)
 	recog_loader = DataLoader(DataLoaderRecog(), batch_size=5, num_workers=5, collate_fn=my_collate)
-
-	for (audio, text, token, token_id) in dev_loader:
-		print(text, token_id)
-		exit(1)
