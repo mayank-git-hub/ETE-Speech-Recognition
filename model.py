@@ -17,7 +17,6 @@ from pytorch_backend.transformer.decoder import Decoder
 from pytorch_backend.transformer.encoder import Encoder
 from pytorch_backend.transformer.label_smoothing_loss import LabelSmoothingLoss
 from pytorch_backend.transformer.layer_norm import LayerNorm
-from pytorch_backend.transformer.plot import PlotAttentionReport
 
 
 def subsequent_mask(size, device="cpu", dtype=torch.uint8):
@@ -470,10 +469,6 @@ class E2E(ASRInterface, torch.nn.Module):
 			'--transformer-length-normalized-loss', default=True, type=strtobool, help='normalize loss by length')
 
 		return parser
-
-	@property
-	def attention_plot_class(self):
-		return PlotAttentionReport
 
 	def __init__(self, idim, odim, args, ignore_id=-1):
 		torch.nn.Module.__init__(self)
