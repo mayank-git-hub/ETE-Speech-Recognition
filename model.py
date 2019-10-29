@@ -19,8 +19,6 @@ from pytorch_backend.transformer.label_smoothing_loss import LabelSmoothingLoss
 from pytorch_backend.transformer.layer_norm import LayerNorm
 from pytorch_backend.transformer.plot import PlotAttentionReport
 
-CTC_LOSS_THRESHOLD = 10000
-
 
 def subsequent_mask(size, device="cpu", dtype=torch.uint8):
 	"""Create mask for subsequent steps (1, size, size)
@@ -631,23 +629,12 @@ class E2E(ASRInterface, torch.nn.Module):
 		alpha = self.mtlalpha
 		if alpha == 0:
 			self.loss = loss_att
-			loss_att_data = float(loss_att)
-			loss_ctc_data = None
 		elif alpha == 1:
 			self.loss = loss_ctc
-			loss_att_data = None
-			loss_ctc_data = float(loss_ctc)
 		else:
 			self.loss = alpha * loss_ctc + (1 - alpha) * loss_att
-			loss_att_data = float(loss_att)
-			loss_ctc_data = float(loss_ctc)
 
-		loss_data = float(self.loss)
-		if loss_data < CTC_LOSS_THRESHOLD and not math.isnan(loss_data):
-			print(loss_ctc_data, loss_att_data, self.acc, cer_ctc, cer, wer, loss_data)
-		else:
-			print('loss (=%f) is not correct', loss_data)
-		return self.loss
+		return self.loss, loss_att, loss_ctc
 
 	def recognize(self, feat, recog_args, char_list=None, rnnlm=None, use_jit=False):
 		"""recognize feat

@@ -1,6 +1,9 @@
+import os
+from datetime import datetime
+from specific_config import *
+
 list_to_download = [
 	'dev-clean''test-clean''dev-other''test-other''train-clean-100''train-clean-360''train-other-500']
-path_to_download = '/media/mayank/0b40607e-7efc-4216-b12f-8bb86facfaed/Dataset_HDD/Audio/LibriSpeech/LibriSpeech'
 cache_dir = 'Cache'
 url_base = 'www.openslr.org/resources/12/'
 
@@ -26,6 +29,10 @@ rmlsutt = {
 
 seed = 1
 num_epochs = 10
+CTC_LOSS_THRESHOLD = 10000
+
+model_save_path = base_model_path + str(datetime.time(datetime.now()))
+os.makedirs(model_save_path, exist_ok=True)
 
 use_cuda = True
 
