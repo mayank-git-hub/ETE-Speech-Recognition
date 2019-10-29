@@ -158,7 +158,7 @@ class ASRInterface(object):
 	def add_arguments(parser):
 		return parser
 
-	def forward(self, audio, ys):
+	def forward(self, audio, audio_length, ys):
 		# xs, ilens are computed from audio using the pre_process model
 		"""compute loss for training
 
@@ -564,7 +564,9 @@ class E2E(ASRInterface, torch.nn.Module):
 		m = subsequent_mask(ys_mask.size(-1), device=ys_mask.device).unsqueeze(0)
 		return ys_mask.unsqueeze(-2) & m
 
-	def forward(self, audio, ys_pad):
+	def forward(self, audio, audio_length, ys_pad):
+
+		audio = [audio[i][0:audio_length[i]] for i in range(audio.shape[0])]
 
 		xs_pad, ilens = self.pre_process(audio)
 

@@ -118,12 +118,14 @@ def get_audio_from_data(all_data, all_meta, item):
 def my_collate(batch):
 
 	all_audio = []
+	all_audio_length = []
 	all_path = []
 	all_text = []
 	all_token = []
 	all_token_id = []
 
 	max_y = 0
+	max_audio = 0
 
 	for (audio, path, text, token, token_id) in batch:
 
@@ -132,7 +134,10 @@ def my_collate(batch):
 		all_text.append(text)
 		all_token.append(token)
 		all_token_id.append(torch.from_numpy(token_id).long())
+
 		max_y = max(max_y, token_id.shape[0])
+		max_audio = max(max_audio, audio.shape[0])
+		all_audio_length.append(audio.shape[0])
 
 	for all_token_id_i in range(len(all_token_id)):
 
@@ -143,9 +148,19 @@ def my_collate(batch):
 			value=-1
 		).unsqueeze(0)
 
-	all_token_id = torch.cat(all_token_id, dim=0)
+		all_audio[all_token_id_i] = F.pad(
+			all_audio[all_token_id_i],
+			[0, max_audio - all_audio[all_token_id_i].shape[0]],
+			mode='constant',
+			value=-1
+		).unsqueeze(0)
 
-	return all_audio, all_path, all_text, all_token, all_token_id
+	all_token_id = torch.cat(all_token_id, dim=0)
+	all_audio = torch.cat(all_audio, dim=0)
+
+	all_audio_length = torch.LongTensor(all_audio_length)
+
+	return all_audio, all_audio_length, all_path, all_text, all_token, all_token_id
 
 
 class DataLoaderTrain(data.Dataset):

@@ -37,14 +37,19 @@ def train(model, optimizer):
 		optimizer.zero_grad()
 		model.train()
 
-		for no, (audio, path, text, token, token_id) in enumerate(dataloader):
+		for no, (audio, audio_length, path, text, token, token_id) in enumerate(dataloader):
 
 			if config.use_cuda:
 
-				audio = [audio_i.cuda() for audio_i in audio]
+				audio = audio.cuda()
+				audio_length = audio_length.cuda()
 				token_id = token_id.cuda()
 
-			loss, loss_att, loss_ctc = model(audio, token_id)
+			loss, loss_att, loss_ctc = model(audio, audio_length, token_id)
+
+			loss = loss.mean()
+			loss_att = loss_att.mean()
+			loss_ctc = loss_ctc.mean()
 
 			loss.backward()
 			optimizer.step()
