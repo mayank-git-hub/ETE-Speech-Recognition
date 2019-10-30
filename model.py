@@ -18,6 +18,36 @@ from pytorch_backend.transformer.encoder import Encoder
 from pytorch_backend.transformer.label_smoothing_loss import LabelSmoothingLoss
 from pytorch_backend.transformer.layer_norm import LayerNorm
 
+low_freq_mel = 0
+high_freq_mel = 2595 * math.log10(1 + (config.fbank['rate'] / 2) / 700)  # Convert Hz to Mel
+mel_points = torch.linspace(low_freq_mel, high_freq_mel, config.fbank['nfilt'] + 2)  # Equally spaced in Mel scale
+hz_points = 700 * (torch.pow(10, mel_points / 2595) - 1)  # Convert Mel to Hz
+
+bin_ = torch.floor((config.fbank['n_fft'] + 1) * hz_points / config.fbank['rate']).float()
+fbank = torch.zeros((config.fbank['nfilt'], int(math.floor(config.fbank['n_fft'] / 2 + 1)))).float()
+
+if config.use_cuda:
+	fbank = fbank.cuda()
+	bin_ = bin_.cuda()
+
+for m in range(1, config.fbank['nfilt'] + 1):
+
+	f_m_minus = int(bin_[m - 1])  # left
+	f_m = int(bin_[m])  # center
+	f_m_plus = int(bin_[m + 1])  # right
+
+	index_1 = torch.arange(f_m_minus, f_m)
+	index_2 = torch.arange(f_m, f_m_plus)
+
+	if config.use_cuda:
+		index_1 = index_1.cuda()
+		index_2 = index_2.cuda()
+
+	fbank[m - 1, index_1] = ((index_1.float() - bin_[m - 1]) / (
+			bin_[m] - bin_[m - 1])).float()
+	fbank[m - 1, index_2] = ((bin_[m + 1] - index_2.float()) / (
+			bin_[m + 1] - bin_[m])).float()
+
 
 def subsequent_mask(size, device="cpu", dtype=torch.uint8):
 	"""Create mask for subsequent steps (1, size, size)
@@ -311,14 +341,12 @@ class PreProcess(nn.Module):
 		super(PreProcess, self).__init__()
 
 	def single_pass(self, data):
-		# ToDo - write unit test function for calculate_fbank
 		# ToDo - write the code for generating pitch features
 
 		pre_emphasis = config.fbank['pre_emphasis']
 		frame_size = config.fbank['frame_size']
 		frame_stride = config.fbank['frame_stride']
 		n_fft = config.fbank['n_fft']
-		nfilt = config.fbank['nfilt']
 		rate = config.fbank['rate']
 
 		emphasized_data = torch.zeros_like(data).float()
@@ -330,88 +358,24 @@ class PreProcess(nn.Module):
 		emphasized_data[0] = data[0]
 
 		frame_length, frame_step = frame_size * rate, frame_stride * rate  # Convert from seconds to samples
-		frame_length = int(round(frame_length))
-		frame_step = int(round(frame_step))
-		num_frames = int(abs(data.shape[0] - frame_length) / frame_step) + 1  # Make sure that we have at least 1 frame
+		frame_length = int(frame_length)
+		frame_step = int(frame_step)
 
-		pad_signal_length = num_frames * frame_step + frame_length
+		mag_frames = torch.norm(
+			torch.stft(
+				emphasized_data,
+				n_fft=n_fft,
+				hop_length=frame_step,
+				win_length=frame_length,
+				window=torch.hamming_window(frame_length),
+				pad_mode='constant'
+			), dim=2).transpose(1, 0)
 
-		z = torch.zeros((pad_signal_length - data.shape[0]))
-
-		if config.use_cuda:
-			z = z.cuda()
-
-		pad_signal = torch.cat((emphasized_data, z), dim=0)
-
-		indices = \
-			torch.arange(frame_length).repeat(num_frames, 1) + \
-			torch.arange(0, num_frames * frame_step, frame_step).repeat(frame_length, 1).transpose(1, 0)
-
-		frames = pad_signal[indices.long()]
-
-		if config.use_cuda:
-			frames *= torch.hamming_window(frame_length).cuda()
-		else:
-			frames *= torch.hamming_window(frame_length)
-
-		# ToDo - shifting back to torch because of no parameters to change n_fft
-
-		frames = frames.cpu().numpy()
-		mag_frames = np.absolute(np.fft.rfft(frames, n_fft))  # Magnitude of the FFT
 		pow_frames = ((1.0 / n_fft) * (mag_frames ** 2))  # Power Spectrum
 
-		# Shifting back to torch
-
-		pow_frames = torch.from_numpy(pow_frames).float()
-
-		if config.use_cuda:
-			pow_frames = pow_frames.cuda()
-
-		#############################################################################
-
-		low_freq_mel = 0
-		high_freq_mel = (2595 * math.log10(1 + (rate / 2) / 700))  # Convert Hz to Mel
-		mel_points = torch.linspace(low_freq_mel, high_freq_mel, nfilt + 2)  # Equally spaced in Mel scale
-		hz_points = (700 * (torch.pow(mel_points / 2595, 10) - 1))  # Convert Mel to Hz
-		bin_ = torch.floor((n_fft + 1) * hz_points / rate)
-
-		fbank = torch.zeros((nfilt, int(math.floor(n_fft / 2 + 1)))).float()
-
-		if config.use_cuda:
-			fbank = fbank.cuda()
-			bin_ = bin_.cuda()
-
-		# ToDo - Check if this for loop can be removed
-
-		for m in range(1, nfilt + 1):
-
-			f_m_minus = int(bin_[m - 1])  # left
-			f_m = int(bin_[m])  # center
-			f_m_plus = int(bin_[m + 1])  # right
-
-			# ToDo - Check if this arange works as expected
-
-			index_1 = torch.arange(f_m_minus, f_m)
-			index_2 = torch.arange(f_m, f_m_plus)
-
-			if config.use_cuda:
-				index_1 = index_1.cuda()
-				index_2 = index_2.cuda()
-
-			fbank[m - 1, index_1] = ((index_1 - bin_[m - 1]) / (
-					bin_[m] - bin_[m - 1])).float()
-			fbank[m - 1, index_2] = ((bin_[m + 1] - index_2) / (
-					bin_[m + 1] - bin_[m])).float()
-
 		filter_banks = torch.matmul(pow_frames, fbank.transpose(1, 0))
-		filter_banks = torch.from_numpy(
-			np.where((filter_banks == 0).cpu(), np.finfo(float).eps, filter_banks.cpu())).float()  # Numerical Stability
-
-		if config.use_cuda:
-			filter_banks = filter_banks.cuda()
-
+		filter_banks[filter_banks == 0] = 2.220446049250313e-16
 		filter_banks = 20 * torch.log10(filter_banks)  # dB
-
 		filter_banks -= (torch.mean(filter_banks, dim=0) + 1e-8)
 
 		return filter_banks
@@ -470,7 +434,7 @@ class E2E(ASRInterface, torch.nn.Module):
 
 		return parser
 
-	def __init__(self, idim, odim, args, ignore_id=-1):
+	def __init__(self, idim, odim, args, ignore_id=-1, char_list=None):
 		torch.nn.Module.__init__(self)
 
 		self.pre_process = PreProcess()
@@ -506,8 +470,8 @@ class E2E(ASRInterface, torch.nn.Module):
 		self.subsample = [1]
 
 		# self.lsm_weight = a
-		self.criterion = LabelSmoothingLoss(self.odim, self.ignore_id, args.lsm_weight,
-		                                    args.transformer_length_normalized_loss)
+		self.criterion = LabelSmoothingLoss(
+			self.odim, self.ignore_id, args.lsm_weight, args.transformer_length_normalized_loss)
 		# self.verbose = args.verbose
 		self.reset_parameters(args)
 		self.adim = args.adim
@@ -518,9 +482,11 @@ class E2E(ASRInterface, torch.nn.Module):
 			self.ctc = None
 
 		if args.report_cer or args.report_wer:
-			self.error_calculator = ErrorCalculator(args.char_list,
-			                                        args.sym_space, args.sym_blank,
-			                                        args.report_cer, args.report_wer)
+			self.error_calculator = ErrorCalculator(
+				char_list,
+				args.sym_space, args.sym_blank,
+				args.report_cer, args.report_wer
+			)
 		else:
 			self.error_calculator = None
 		self.rnnlm = None

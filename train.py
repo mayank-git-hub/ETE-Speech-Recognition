@@ -32,7 +32,8 @@ def train(model, optimizer):
 			DataLoaderTrain(),
 			batch_size=config.train_param['batch_size'],
 			num_workers=config.train_param['num_workers'],
-			collate_fn=my_collate
+			collate_fn=my_collate,
+			shuffle=True
 		))
 
 		optimizer.zero_grad()
@@ -91,6 +92,7 @@ def train(model, optimizer):
 				'Losses': [all_loss, all_loss_att, all_loss_ctc],
 				'datetime': str(datetime.time(datetime.now()))
 			}, f)
+		break
 
 
 def main():
