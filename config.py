@@ -27,6 +27,11 @@ rmlsutt = {
 	'min_chars': 0,
 }
 
+resume = {
+	'restart': True,
+	'model_path': '/home/SharedData/Mayank/Audio/models/14:29:46.415864/LibriSpeech_train960.0.192.6796.16:47:26.095216.pth'
+}
+
 seed = 1
 num_epochs = 10
 CTC_LOSS_THRESHOLD = 10000

@@ -11,14 +11,14 @@ from torch import nn
 from unigram_gen import create_unigram_model, create_json
 
 
-def train(model, optimizer):
+def train(epoch_start, model, optimizer):
 
 	# ToDo - Create tests to check whether the model is training
 	# ToDo - Visualize the outputs
 	# ToDo - Visualize the attention outputs
 	# ToDo - Create tests to check that the Fbanks are being generated correctly
 
-	for epoch_i in range(config.num_epochs):
+	for epoch_i in range(epoch_start, config.num_epochs):
 
 		all_loss = []
 		all_loss_ctc = []
@@ -66,6 +66,7 @@ def train(model, optimizer):
 			running_loss_att = (running_loss_att*no + loss_att.item())/(no + 1)
 
 			dataloader.set_description(
+				'Epoch: {6} | '
 				'Loss: {0:.4f} | '
 				'Avg. Loss: {3:.4f} | '
 				'Loss_Att: {1:.4f} | '
@@ -77,7 +78,8 @@ def train(model, optimizer):
 					loss_ctc.item(),
 					running_loss,
 					running_loss_att,
-					running_loss_ctc)
+					running_loss_ctc,
+					epoch_i)
 			)
 
 		cur_time = datetime.time(datetime.now())
@@ -92,7 +94,6 @@ def train(model, optimizer):
 				'Losses': [all_loss, all_loss_att, all_loss_ctc],
 				'datetime': str(datetime.time(datetime.now()))
 			}, f)
-		break
 
 
 def main():
@@ -109,7 +110,21 @@ def main():
 	optimizer = get_std_opt(
 		model, config.train_param['adim'], config.train_param['transformer_warmup_steps'], config.train_param['lr'])
 
-	train(model, optimizer)
+	if config.resume['restart']:
+		checkpoint = torch.load(config.resume['model_path'])
+		model.load_state_dict(checkpoint['model'])
+		optimizer.load_state_dict(checkpoint['optimizer'])
+		epoch_start = checkpoint['epoch'] + 1
+		losses = checkpoint['Losses']
+		print(
+			'Loss for the epoch:', epoch_start, 
+			' | Avg. Loss: {0:.4f} | '
+			'Avg Loss_Att: {1:.4f} | '
+			'Avg Loss_CTC: {2:.4f}'.format(np.mean(losses[0]), np.mean(losses[1]), np.mean(losses[2])))
+	else:
+		epoch_start = 0
+
+	train(epoch_start, model, optimizer)
 
 
 if __name__ == "__main__":
