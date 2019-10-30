@@ -1,11 +1,9 @@
-import os
 from datetime import datetime
 from specific_config import *
 import shutil
 
 list_to_download = [
 	'dev-clean', 'test-clean', 'dev-other', 'test-other', 'train-clean-100', 'train-clean-360', 'train-other-500']
-cache_dir = 'Cache'
 os.makedirs(cache_dir, exist_ok=True)
 url_base = 'www.openslr.org/resources/12/'
 
@@ -40,7 +38,7 @@ shutil.copyfile('config.py', model_save_path + '/config.py')
 use_cuda = True
 
 train_param = {
-	'batch_size': 20,
+	'batch_size': 10,
 	'num_workers': 8,
 	'lr': 7.5,
 	'adim': 256,
