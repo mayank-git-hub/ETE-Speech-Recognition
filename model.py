@@ -340,7 +340,8 @@ class PreProcess(nn.Module):
 	def __init__(self):
 		super(PreProcess, self).__init__()
 
-	def single_pass(self, data):
+	def forward(self, data):
+
 		# ToDo - write the code for generating pitch features
 
 		pre_emphasis = config.fbank['pre_emphasis']
@@ -354,8 +355,8 @@ class PreProcess(nn.Module):
 		if config.use_cuda:
 			emphasized_data = emphasized_data.cuda()
 
-		emphasized_data[1:] = data[1:] - pre_emphasis * data[:-1]
-		emphasized_data[0] = data[0]
+		emphasized_data[:, 1:] = data[:, 1:] - pre_emphasis * data[:, :-1]
+		emphasized_data[:, 0] = data[:, 0]
 
 		frame_length, frame_step = frame_size * rate, frame_stride * rate  # Convert from seconds to samples
 		frame_length = int(frame_length)
@@ -369,43 +370,16 @@ class PreProcess(nn.Module):
 				win_length=frame_length,
 				window=torch.hamming_window(frame_length),
 				pad_mode='constant'
-			), dim=2).transpose(1, 0)
+			), dim=3).transpose(2, 1)
 
 		pow_frames = ((1.0 / n_fft) * (mag_frames ** 2))  # Power Spectrum
 
 		filter_banks = torch.matmul(pow_frames, fbank.transpose(1, 0))
 		filter_banks[filter_banks == 0] = 2.220446049250313e-16
 		filter_banks = 20 * torch.log10(filter_banks)  # dB
-		filter_banks -= (torch.mean(filter_banks, dim=0) + 1e-8)
+		filter_banks -= (torch.mean(filter_banks, dim=(0, 1), keepdim=True) + 1e-8)
 
-		return filter_banks
-
-	def forward(self, data):
-
-		all_output = []
-		all_length = []
-
-		max_ = 0
-
-		for data_i in data:
-
-			process_i = self.single_pass(data_i)
-			all_output.append(process_i)
-			all_length.append(process_i.shape[0])
-			max_ = max(process_i.shape[0], max_)
-
-		for all_output_i in range(len(all_output)):
-
-			all_output[all_output_i] = F.pad(
-				all_output[all_output_i],
-				[0, 0, 0, max_ - all_output[all_output_i].shape[0]],
-				mode='constant',
-				value=0
-			).unsqueeze(0)
-
-		all_output = torch.cat(all_output, dim=0)
-
-		return all_output, torch.LongTensor(all_length)
+		return filter_banks, (torch.ones(filter_banks.shape[0])*filter_banks.shape[1]).long()
 
 
 class E2E(ASRInterface, torch.nn.Module):
@@ -532,7 +506,7 @@ class E2E(ASRInterface, torch.nn.Module):
 
 	def forward(self, audio, audio_length, ys_pad):
 
-		audio = [audio[i][0:audio_length[i]] for i in range(audio.shape[0])]
+		# audio = [audio[i][0:audio_length[i]] for i in range(audio.shape[0])]
 
 		xs_pad, ilens = self.pre_process(audio)
 
