@@ -170,7 +170,7 @@ class DataLoaderTrain(data.Dataset):
 		self.all_data = load_filename(config.train_set, 'DataLoaderTrain.cache')
 		if only_all_data:
 			return
-		with open('Cache/json_data/train.json', 'r') as f:
+		with open(config.cache_dir + '/json_data/train.json', 'r') as f:
 			self.all_meta = json.load(f)
 
 	def __getitem__(self, item):
@@ -189,7 +189,7 @@ class DataLoaderRecog(data.Dataset):
 		self.all_data = load_filename(config.recog_set, 'DataLoaderRecog.cache')
 		if only_all_data:
 			return
-		with open('Cache/json_data/recog.json', 'r') as f:
+		with open(config.cache_dir + '/json_data/recog.json', 'r') as f:
 			self.all_meta = json.load(f)
 
 	def __getitem__(self, item):
@@ -208,7 +208,7 @@ class DataLoaderDev(data.Dataset):
 		self.all_data = load_filename(config.train_dev, 'DataLoaderDev.cache')
 		if only_all_data:
 			return
-		with open('Cache/json_data/dev.json', 'r') as f:
+		with open(config.cache_dir + '/json_data/dev.json', 'r') as f:
 			self.all_meta = json.load(f)
 
 	def __getitem__(self, item):
