@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime
 from torch import nn
 from unigram_gen import create_unigram_model, create_json
+import os
 
 
 def train(epoch_start, model, optimizer):
@@ -39,7 +40,12 @@ def train(epoch_start, model, optimizer):
 		optimizer.zero_grad()
 		model.train()
 
+		prev_lr = 0
+
 		for no, (audio, audio_length, path, text, token, token_id) in enumerate(dataloader):
+
+			if audio.shape[1] >= 270000:
+				continue
 
 			if config.use_cuda:
 
@@ -49,13 +55,31 @@ def train(epoch_start, model, optimizer):
 
 			loss, loss_att, loss_ctc = model(audio, audio_length, token_id)
 
+			if os.path.exists(config.lr_path):
+				with open(config.lr_path, 'r') as f:
+					lr = list(f)[0]
+					if lr == 'None':
+						if optimizer.lr_type == 'file':
+							with open(config.model_save_path + '/lr_file.txt', 'a+') as f:
+								f.write('Shifting to default lr\n')
+						optimizer.lr_type = 'default'
+					else:
+						if optimizer.lr_type == 'default':
+							with open(config.model_save_path + '/lr_file.txt', 'a+') as f:
+								f.write('Shifting to filed lr\n')
+						optimizer.lr_type = 'file'
+						optimizer.lr_file = float(lr)
+
+
 			loss = loss.mean()
 			loss_att = loss_att.mean()
 			loss_ctc = loss_ctc.mean()
 
 			loss.backward()
-			optimizer.step()
-			optimizer.zero_grad()
+
+			if (no + 1) % config.train_param['accum_grad'] == 0:
+				optimizer.step()
+				optimizer.zero_grad()
 
 			all_loss.append(loss.item())
 			all_loss_att.append(loss_att.item())
@@ -65,22 +89,33 @@ def train(epoch_start, model, optimizer):
 			running_loss_ctc = (running_loss_ctc*no + loss_ctc.item())/(no + 1)
 			running_loss_att = (running_loss_att*no + loss_att.item())/(no + 1)
 
+			if prev_lr != optimizer._rate and optimizer.lr_type=='file':
+				with open(config.model_save_path + '/lr_file.txt', 'a+') as f:
+					f.write(str(no) + ' : ' + str(optimizer._rate) + '\n')
+
+			prev_lr = optimizer._rate
+
 			dataloader.set_description(
 				'Epoch: {6} | '
-				'Loss: {0:.4f} | '
-				'Avg. Loss: {3:.4f} | '
-				'Loss_Att: {1:.4f} | '
-				'Avg Loss_Att: {4:.4f} | '
-				'Loss_CTC: {2:.4f} | '
-				'Avg Loss_CTC: {5:.4f}'.format(
+				'LR: {7:.6f} | '
+				'Loss: {0:.3f} | '
+				'Avg. Loss: {3:.3f} | '
+				'Loss_Att: {1:.3f} | '
+				'Avg Loss_Att: {4:.3f} | '
+				'Loss_CTC: {2:.3f} | '
+				'Avg Loss_CTC: {5:.3f}'.format(
 					loss.item(),
 					loss_att.item(),
 					loss_ctc.item(),
 					running_loss,
 					running_loss_att,
 					running_loss_ctc,
-					epoch_i)
+					epoch_i,
+					optimizer._rate
+				)
 			)
+
+		optimizer.zero_grad()
 
 		cur_time = datetime.time(datetime.now())
 

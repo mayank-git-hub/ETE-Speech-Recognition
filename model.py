@@ -7,7 +7,6 @@ from argparse import Namespace
 import editdistance
 from distutils.util import strtobool
 from itertools import groupby
-import torch.nn.functional as F
 
 from pytorch_backend.ctc import CTC
 from pytorch_backend.nets_utils import make_pad_mask
@@ -17,36 +16,6 @@ from pytorch_backend.transformer.decoder import Decoder
 from pytorch_backend.transformer.encoder import Encoder
 from pytorch_backend.transformer.label_smoothing_loss import LabelSmoothingLoss
 from pytorch_backend.transformer.layer_norm import LayerNorm
-
-low_freq_mel = 0
-high_freq_mel = 2595 * math.log10(1 + (config.fbank['rate'] / 2) / 700)  # Convert Hz to Mel
-mel_points = torch.linspace(low_freq_mel, high_freq_mel, config.fbank['nfilt'] + 2)  # Equally spaced in Mel scale
-hz_points = 700 * (torch.pow(10, mel_points / 2595) - 1)  # Convert Mel to Hz
-
-bin_ = torch.floor((config.fbank['n_fft'] + 1) * hz_points / config.fbank['rate']).float()
-fbank = torch.zeros((config.fbank['nfilt'], int(math.floor(config.fbank['n_fft'] / 2 + 1)))).float()
-
-if config.use_cuda:
-	fbank = fbank.cuda()
-	bin_ = bin_.cuda()
-
-for m in range(1, config.fbank['nfilt'] + 1):
-
-	f_m_minus = int(bin_[m - 1])  # left
-	f_m = int(bin_[m])  # center
-	f_m_plus = int(bin_[m + 1])  # right
-
-	index_1 = torch.arange(f_m_minus, f_m)
-	index_2 = torch.arange(f_m, f_m_plus)
-
-	if config.use_cuda:
-		index_1 = index_1.cuda()
-		index_2 = index_2.cuda()
-
-	fbank[m - 1, index_1] = ((index_1.float() - bin_[m - 1]) / (
-			bin_[m] - bin_[m - 1])).float()
-	fbank[m - 1, index_2] = ((bin_[m + 1] - index_2.float()) / (
-			bin_[m + 1] - bin_[m])).float()
 
 
 def subsequent_mask(size, device="cpu", dtype=torch.uint8):
@@ -181,55 +150,55 @@ class CTCPrefixScore(object):
 		return log_psi, self.xp.rollaxis(r, 2)
 
 
-class ASRInterface(object):
-	"""ASR Interface for ESPnet model implementation"""
-
-	@staticmethod
-	def add_arguments(parser):
-		return parser
-
-	def forward(self, audio, audio_length, ys):
-		# xs, ilens are computed from audio using the pre_process model
-		"""compute loss for training
-
-		:param xs:
-			For pytorch, batch of padded source sequences torch.Tensor (B, Tmax, idim)
-			For chainer, list of source sequences chainer.Variable
-		:param ilens: batch of lengths of source sequences (B)
-			For pytorch, torch.Tensor
-			For chainer, list of int
-		:param ys:
-			For pytorch, batch of padded source sequences torch.Tensor (B, Lmax)
-			For chainer, list of source sequences chainer.Variable
-		:return: loss value
-		:rtype: torch.Tensor for pytorch, chainer.Variable for chainer
-		"""
-		raise NotImplementedError("forward method is not implemented")
-
-	def recognize(self, x, recog_args, char_list=None, rnnlm=None):
-		"""recognize x for evaluation
-
-			:param ndarray x: input acouctic feature (B, T, D) or (T, D)
-			:param namespace recog_args: argment namespace contraining options
-			:param list char_list: list of characters
-			:param torch.nn.Module rnnlm: language model module
-			:return: N-best decoding results
-			:rtype: list
-
-		"""
-
-		raise NotImplementedError("recognize method is not implemented")
-
-	def calculate_all_attentions(self, xs, ilens, ys):
-		"""attention calculation
-
-			:param list xs_pad: list of padded input sequences [(T1, idim), (T2, idim), ...]
-			:param ndarray ilens: batch of lengths of input sequences (B)
-			:param list ys: list of character id sequence tensor [(L1), (L2), (L3), ...]
-			:return: attention weights (B, Lmax, Tmax)
-			:rtype: float ndarray
-		"""
-		raise NotImplementedError("calculate_all_attentions method is not implemented")
+# class ASRInterface(object):
+# 	"""ASR Interface for ESPnet model implementation"""
+#
+# 	@staticmethod
+# 	def add_arguments(parser):
+# 		return parser
+#
+# 	def forward(self, audio, ys):
+# 		# xs, ilens are computed from audio using the pre_process model
+# 		"""compute loss for training
+#
+# 		:param xs:
+# 			For pytorch, batch of padded source sequences torch.Tensor (B, Tmax, idim)
+# 			For chainer, list of source sequences chainer.Variable
+# 		:param ilens: batch of lengths of source sequences (B)
+# 			For pytorch, torch.Tensor
+# 			For chainer, list of int
+# 		:param ys:
+# 			For pytorch, batch of padded source sequences torch.Tensor (B, Lmax)
+# 			For chainer, list of source sequences chainer.Variable
+# 		:return: loss value
+# 		:rtype: torch.Tensor for pytorch, chainer.Variable for chainer
+# 		"""
+# 		raise NotImplementedError("forward method is not implemented")
+#
+# 	def recognize(self, x, recog_args, char_list=None, rnnlm=None):
+# 		"""recognize x for evaluation
+#
+# 			:param ndarray x: input acouctic feature (B, T, D) or (T, D)
+# 			:param namespace recog_args: argment namespace contraining options
+# 			:param list char_list: list of characters
+# 			:param torch.nn.Module rnnlm: language model module
+# 			:return: N-best decoding results
+# 			:rtype: list
+#
+# 		"""
+#
+# 		raise NotImplementedError("recognize method is not implemented")
+#
+# 	def calculate_all_attentions(self, xs, ilens, ys):
+# 		"""attention calculation
+#
+# 			:param list xs_pad: list of padded input sequences [(T1, idim), (T2, idim), ...]
+# 			:param ndarray ilens: batch of lengths of input sequences (B)
+# 			:param list ys: list of character id sequence tensor [(L1), (L2), (L3), ...]
+# 			:return: attention weights (B, Lmax, Tmax)
+# 			:rtype: float ndarray
+# 		"""
+# 		raise NotImplementedError("calculate_all_attentions method is not implemented")
 
 
 class ErrorCalculator(object):
@@ -335,54 +304,7 @@ class ErrorCalculator(object):
 		return float(sum(word_eds)) / sum(word_ref_lens)
 
 
-class PreProcess(nn.Module):
-
-	def __init__(self):
-		super(PreProcess, self).__init__()
-
-	def forward(self, data):
-
-		# ToDo - write the code for generating pitch features
-
-		pre_emphasis = config.fbank['pre_emphasis']
-		frame_size = config.fbank['frame_size']
-		frame_stride = config.fbank['frame_stride']
-		n_fft = config.fbank['n_fft']
-		rate = config.fbank['rate']
-
-		emphasized_data = torch.zeros_like(data).float()
-
-		if config.use_cuda:
-			emphasized_data = emphasized_data.cuda()
-
-		emphasized_data[:, 1:] = data[:, 1:] - pre_emphasis * data[:, :-1]
-		emphasized_data[:, 0] = data[:, 0]
-
-		frame_length, frame_step = frame_size * rate, frame_stride * rate  # Convert from seconds to samples
-		frame_length = int(frame_length)
-		frame_step = int(frame_step)
-
-		mag_frames = torch.norm(
-			torch.stft(
-				emphasized_data,
-				n_fft=n_fft,
-				hop_length=frame_step,
-				win_length=frame_length,
-				window=torch.hamming_window(frame_length),
-				pad_mode='constant'
-			), dim=3).transpose(2, 1)
-
-		pow_frames = ((1.0 / n_fft) * (mag_frames ** 2))  # Power Spectrum
-
-		filter_banks = torch.matmul(pow_frames, fbank.transpose(1, 0))
-		filter_banks[filter_banks == 0] = 2.220446049250313e-16
-		filter_banks = 20 * torch.log10(filter_banks)  # dB
-		filter_banks -= (torch.mean(filter_banks, dim=(0, 1), keepdim=True) + 1e-8)
-
-		return filter_banks, (torch.ones(filter_banks.shape[0])*filter_banks.shape[1]).long()
-
-
-class E2E(ASRInterface, torch.nn.Module):
+class E2E(nn.Module):
 
 	@staticmethod
 	def add_arguments(parser):
@@ -409,9 +331,8 @@ class E2E(ASRInterface, torch.nn.Module):
 		return parser
 
 	def __init__(self, idim, odim, args, ignore_id=-1, char_list=None):
-		torch.nn.Module.__init__(self)
 
-		self.pre_process = PreProcess()
+		super().__init__()
 
 		if args.transformer_attn_dropout_rate is None:
 			args.transformer_attn_dropout_rate = args.dropout_rate
@@ -465,6 +386,81 @@ class E2E(ASRInterface, torch.nn.Module):
 			self.error_calculator = None
 		self.rnnlm = None
 
+		# Fbank Preprocess INIT
+
+		low_freq_mel = 0
+		high_freq_mel = 2595 * math.log10(1 + (config.fbank['rate'] / 2) / 700)  # Convert Hz to Mel
+		mel_points = torch.linspace(low_freq_mel, high_freq_mel, config.fbank['nfilt'] + 2)
+		hz_points = 700 * (torch.pow(10, mel_points / 2595) - 1)  # Convert Mel to Hz
+
+		bin_ = torch.floor((config.fbank['n_fft'] + 1) * hz_points / config.fbank['rate']).float()
+		fbank = torch.zeros((config.fbank['nfilt'], int(math.floor(config.fbank['n_fft'] / 2 + 1)))).float()
+
+		for m in range(1, config.fbank['nfilt'] + 1):
+			f_m_minus = int(bin_[m - 1])  # left
+			f_m = int(bin_[m])  # center
+			f_m_plus = int(bin_[m + 1])  # right
+
+			index_1 = torch.arange(f_m_minus, f_m)
+			index_2 = torch.arange(f_m, f_m_plus)
+
+			fbank[m - 1, index_1] = ((index_1.float() - bin_[m - 1]) / (
+					bin_[m] - bin_[m - 1])).float()
+			fbank[m - 1, index_2] = ((bin_[m + 1] - index_2.float()) / (
+					bin_[m + 1] - bin_[m])).float()
+
+		self.fbank = [fbank.to(torch.device('cuda:'+str(i))) for i in range(len(config.num_cuda.split(',')))]
+
+	def pre_process(self, data, data_length):
+
+		# ToDo - write the code for generating pitch features
+
+		fbank = self.fbank[data.get_device()]
+
+		pre_emphasis = config.fbank['pre_emphasis']
+		frame_size = config.fbank['frame_size']
+		frame_stride = config.fbank['frame_stride']
+		n_fft = config.fbank['n_fft']
+		rate = config.fbank['rate']
+
+		emphasized_data = torch.zeros_like(data).float()
+
+		if config.use_cuda:
+			emphasized_data = emphasized_data.to(data.device)
+
+		emphasized_data[:, 1:] = data[:, 1:] - pre_emphasis * data[:, :-1]
+		emphasized_data[:, 0] = data[:, 0]
+
+		frame_length, frame_step = frame_size * rate, frame_stride * rate  # Convert from seconds to samples
+		frame_length = int(frame_length)
+		frame_step = int(frame_step)
+
+		mag_frames = torch.norm(
+			torch.stft(
+				emphasized_data,
+				n_fft=n_fft,
+				hop_length=frame_step,
+				win_length=frame_length,
+				window=torch.hamming_window(frame_length).to(emphasized_data.device),
+				pad_mode='constant'
+			), dim=3).transpose(2, 1)
+
+		pow_frames = ((1.0 / n_fft) * (mag_frames ** 2))  # Power Spectrum
+
+		filter_banks = torch.matmul(pow_frames, fbank.transpose(1, 0))
+		filter_banks[filter_banks == 0] = 2.220446049250313e-16
+		filter_banks = 20 * torch.log10(filter_banks)  # dB
+		filter_banks -= (torch.mean(filter_banks, dim=(0, 1), keepdim=True) + 1e-8)
+
+		if data_length is None:
+			ilens = (torch.ones([filter_banks.shape[0]])*filter_banks.shape[1]).long()
+		else:
+			ilens = torch.FloatTensor([data_length_i//frame_step + 1 for data_length_i in data_length]).long()
+
+		# for filter_banks.shape[0]
+
+		return filter_banks, ilens
+
 	def reset_parameters(self, args):
 		if args.transformer_init == "pytorch":
 			return
@@ -506,12 +502,10 @@ class E2E(ASRInterface, torch.nn.Module):
 
 	def forward(self, audio, audio_length, ys_pad):
 
-		# audio = [audio[i][0:audio_length[i]] for i in range(audio.shape[0])]
-
-		xs_pad, ilens = self.pre_process(audio)
+		xs_pad, ilens = self.pre_process(audio, audio_length)
 
 		if config.use_cuda:
-			xs_pad = xs_pad.cuda()
+			xs_pad = xs_pad.to(audio.device)
 
 		'''E2E forward
 
@@ -544,7 +538,7 @@ class E2E(ASRInterface, torch.nn.Module):
 
 		# TODO(karita) show predected text
 		# TODO(karita) calculate these stats
-		cer_ctc = None
+		# cer_ctc = None
 		if self.mtlalpha == 0.0:
 			loss_ctc = None
 		else:
@@ -568,9 +562,9 @@ class E2E(ASRInterface, torch.nn.Module):
 		if self.training or self.error_calculator is None:
 			return self.loss, loss_att, loss_ctc
 		else:
-			ys_hat = pred_pad.argmax(dim=-1)
-			cer, wer = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
-			return self.loss, loss_att, loss_ctc, cer, wer, ys_hat, ys_pad
+			# ys_hat = pred_pad.argmax(dim=-1)
+			# cer, wer = self.error_calculator(ys_hat.cpu(), ys_pad.cpu(), is_ctc=True)
+			return self.loss, loss_att, loss_ctc, cer_ctc , ys_hat, ys_pad
 
 	def recognize(self, feat, recog_args, char_list=None, rnnlm=None, use_jit=False):
 		"""recognize feat

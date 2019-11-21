@@ -218,22 +218,3 @@ class DataLoaderDev(data.Dataset):
 	def __len__(self):
 
 		return len(self.all_data)
-
-
-if __name__ == "__main__":
-	"""
-		Dataloader should produce 
-			1) audio array
-			2) path to audio array
-			3) Token transcript
-			4) Token ID transcript
-			5) Word transcript
-
-		After dataloader gives the output, all the ys should be padded to get the same size, (pad with -1)
-	"""
-
-	from torch.utils.data import DataLoader
-
-	dev_loader = DataLoader(DataLoaderDev(), batch_size=5, num_workers=5, collate_fn=my_collate)
-	train_loader = DataLoader(DataLoaderTrain(), batch_size=5, num_workers=5, collate_fn=my_collate)
-	recog_loader = DataLoader(DataLoaderRecog(), batch_size=5, num_workers=5, collate_fn=my_collate)

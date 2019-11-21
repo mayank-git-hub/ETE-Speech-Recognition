@@ -13,13 +13,13 @@ def test(model):
 	all_loss_ctc = []
 	all_loss_att = []
 	all_cer = []
-	all_wer = []
+	# all_wer = []
 
 	running_loss = 0
 	running_loss_ctc = 0
 	running_loss_att = 0
 	running_cer = 0
-	running_wer = 0
+	# running_wer = 0
 
 	dataloader = tqdm(data.DataLoader(
 		DataLoaderRecog(),
@@ -37,34 +37,33 @@ def test(model):
 
 			if config.use_cuda:
 				audio = audio.cuda()
-				audio_length = audio_length.cuda()
+				# audio_length = audio_length.cuda()
 				token_id = token_id.cuda()
 
-			loss, loss_att, loss_ctc, cer, wer, ys_hat, ys_pad = model(audio, audio_length, token_id)
+			loss, loss_att, loss_ctc, cer, ys_hat, ys_pad = model(audio, None, token_id)
 
 			all_loss.append(loss.item())
 			all_loss_att.append(loss_att.item())
 			all_loss_ctc.append(loss_ctc.item())
 			all_cer.append(cer)
-			all_wer.append(wer)
+			# all_wer.append(wer)
 
 			running_loss = (running_loss*no + loss.item())/(no + 1)
 			running_loss_ctc = (running_loss_ctc*no + loss_ctc.item())/(no + 1)
 			running_loss_att = (running_loss_att*no + loss_att.item())/(no + 1)
 			running_cer = (running_cer*no + cer)/(no + 1)
-			running_wer = (running_wer*no + wer)/(no + 1)
+			# running_wer = (running_wer*no + wer)/(no + 1)
 
 			dataloader.set_description(
 				'Avg. Loss: {0:.4f} | '
 				'Avg Loss_Att: {1:.4f} | '
 				'Avg Loss_CTC: {2:.4f} | '
-				'CER: {3:.4f} | '
-				'WER: {4:.4f}'.format(
+				'CER: {3:.4f} | '.format(
 					running_loss,
 					running_loss_att,
 					running_loss_ctc,
 					running_cer,
-					running_wer
+					# running_wer
 				)
 			)
 
@@ -72,13 +71,12 @@ def test(model):
 		'Avg. Loss: {0:.4f} | '
 		'Avg Loss_Att: {1:.4f} | '
 		'Avg Loss_CTC: {2:.4f} | '
-		'CER: {3:.4f} | '
-		'WER: {4:.4f}'.format(
+		'CER: {3:.4f} | '.format(
 			running_loss,
 			running_loss_att,
 			running_loss_ctc,
 			running_cer,
-			running_wer
+			# running_wer
 		))
 
 
@@ -111,7 +109,7 @@ def main():
 
 	checkpoint = torch.load(config.test_model)
 	model.load_state_dict(checkpoint['model'])
-
+		
 	test(model)
 
 

@@ -27,32 +27,32 @@ rmlsutt = {
 	'min_chars': 0,
 }
 
-resume = {
-	'restart': True,
-	'model_path': '/home/SharedData/Mayank/Audio/models/14:29:46.415864/LibriSpeech_train960.0.192.6796.16:47:26.095216.pth'
-}
-
 seed = 1
-num_epochs = 10
+num_epochs = 100
 CTC_LOSS_THRESHOLD = 10000
 
 model_save_path = base_model_path + str(datetime.time(datetime.now()))
+
+print('Model Save Path: ', model_save_path)
 os.makedirs(model_save_path, exist_ok=True)
 shutil.copyfile('config.py', model_save_path + '/config.py')
 
 use_cuda = True
 
 train_param = {
-	'batch_size': 10,
-	'num_workers': 8,
-	'lr': 7.5,
+	'batch_size': 10*len(num_cuda.split(',')),
+	'num_workers': 8*len(num_cuda.split(',')),
+	'lr': 4,
 	'adim': 256,
 	'transformer_warmup_steps': 25000,
+	'accum_grad': int(4/len(num_cuda.split(','))),
 }
 
+lr_path = 'lr_file'
+
 test_param = {
-	'batch_size': 10,
-	'num_workers': 8,
+	'batch_size': 1*len(num_cuda.split(',')),
+	'num_workers': 8*len(num_cuda.split(',')),
 }
 
 
@@ -60,14 +60,14 @@ class ModelArgs:
 	accum_grad = 8
 	aconv_chans = -1
 	aconv_filts = 100
-	adim = 256
+	adim = 512  # Changed (256)
 	aheads = 4
 	apply_uttmvn = True
 	atype = 'dot'
 	awin = 5
 	backend = 'pytorch'
 	badim = 320
-	batch_bins = 5992000
+	batch_bins = 6000000  # Changed (5992000)
 	batch_count = 'bin'
 	batch_frames_in = 0
 	batch_frames_inout = 0
