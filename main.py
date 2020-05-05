@@ -43,7 +43,7 @@ def test():
 
 
 @main.command()
-def pre_process():
+def genUnigram():
 
 	import dataloader
 	import unigram_gen

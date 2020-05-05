@@ -55,22 +55,6 @@ def train(epoch_start, model, optimizer):
 
 			loss, loss_att, loss_ctc = model(audio, audio_length, token_id)
 
-			if os.path.exists(config.lr_path):
-				with open(config.lr_path, 'r') as f:
-					lr = list(f)[0]
-					if lr == 'None':
-						if optimizer.lr_type == 'file':
-							with open(config.model_save_path + '/lr_file.txt', 'a+') as f:
-								f.write('Shifting to default lr\n')
-						optimizer.lr_type = 'default'
-					else:
-						if optimizer.lr_type == 'default':
-							with open(config.model_save_path + '/lr_file.txt', 'a+') as f:
-								f.write('Shifting to filed lr\n')
-						optimizer.lr_type = 'file'
-						optimizer.lr_file = float(lr)
-
-
 			loss = loss.mean()
 			loss_att = loss_att.mean()
 			loss_ctc = loss_ctc.mean()
@@ -88,12 +72,6 @@ def train(epoch_start, model, optimizer):
 			running_loss = (running_loss*no + loss.item())/(no + 1)
 			running_loss_ctc = (running_loss_ctc*no + loss_ctc.item())/(no + 1)
 			running_loss_att = (running_loss_att*no + loss_att.item())/(no + 1)
-
-			if prev_lr != optimizer._rate and optimizer.lr_type=='file':
-				with open(config.model_save_path + '/lr_file.txt', 'a+') as f:
-					f.write(str(no) + ' : ' + str(optimizer._rate) + '\n')
-
-			prev_lr = optimizer._rate
 
 			dataloader.set_description(
 				'Epoch: {6} | '

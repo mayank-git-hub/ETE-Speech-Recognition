@@ -48,8 +48,6 @@ train_param = {
 	'accum_grad': int(4/len(num_cuda.split(','))),
 }
 
-lr_path = 'lr_file'
-
 test_param = {
 	'batch_size': 1*len(num_cuda.split(',')),
 	'num_workers': 8*len(num_cuda.split(',')),
