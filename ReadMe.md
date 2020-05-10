@@ -13,6 +13,8 @@ CPP to python.
 # Downloading the data set
 
 In specificConfig.py, set the path to where you would want to download the data set in "path_to_download".
+axel should be installed for downloading the dataset. If you do not want to download it using axel, then download the tar.gz files and place it in the folder - 
+config.path_to_download + '/' + list_i + '.tar.gz'
 
     $ python downloadDataset.py
     

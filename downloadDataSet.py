@@ -11,7 +11,7 @@ def download_dataset():
 		if not os.path.exists(config.path_to_download + '/' + list_i):
 
 			if not os.path.exists(config.path_to_download + '/' + list_i + '.tar.gz'):
-				os.system("axel -a -n -10 -o "+config.path_to_download+'/'+list_i+'.tar.gz '+config.url_base+'/'+list_i+'.tar.gz')
+				os.system("axel -a -n 10 -o "+config.path_to_download+'/'+list_i+'.tar.gz '+config.url_base+'/'+list_i+'.tar.gz')
 
 			os.system('tar -xvzf ' + config.path_to_download + '/' + list_i + '.tar.gz -C ' + config.path_to_download)
 

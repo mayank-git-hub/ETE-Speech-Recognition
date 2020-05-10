@@ -19,7 +19,7 @@ def load_filename(dataset, cache_name):
 		gender_mapping = {}
 		length = 0
 
-		with open(config.path_to_download + '/SPEAKERS.TXT', 'r') as f:
+		with open(config.path_to_download + '/LibriSpeech/SPEAKERS.TXT', 'r') as f:
 			for i in f:
 				if i[0] == ';':
 					continue
@@ -30,7 +30,7 @@ def load_filename(dataset, cache_name):
 
 		for set_i in tqdm(dataset):
 
-			path_1 = config.path_to_download + '/' + set_i
+			path_1 = config.path_to_download + '/LibriSpeech/' + set_i
 
 			for speaker_i in tqdm(sorted(os.listdir(path_1))):
 

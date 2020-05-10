@@ -48,9 +48,9 @@ def genUnigram():
 	import dataloader
 	import unigram_gen
 
-	dataloader.DataLoaderTrain()
-	dataloader.DataLoaderRecog()
-	dataloader.DataLoaderDev()
+	dataloader.DataLoaderTrain(only_all_data=True)
+	dataloader.DataLoaderRecog(only_all_data=True)
+	dataloader.DataLoaderDev(only_all_data=True)
 
 	unigram_gen.create_unigram_model()
 	unigram_gen.create_json()
