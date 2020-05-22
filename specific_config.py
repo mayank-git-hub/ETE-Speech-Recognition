@@ -15,6 +15,10 @@ resume = {
 		''
 }
 
-num_cuda = '0'
+use_cuda = False
 
-os.environ["CUDA_VISIBLE_DEVICES"] = num_cuda
+if not use_cuda:
+	num_cuda = '0'
+	os.environ["CUDA_VISIBLE_DEVICES"] = num_cuda
+else:
+	num_cuda = '0'

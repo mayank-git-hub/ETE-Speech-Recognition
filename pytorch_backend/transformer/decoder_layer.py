@@ -4,6 +4,8 @@ from torch import nn
 
 from .layer_norm import LayerNorm
 
+import config
+
 
 class DecoderLayer(nn.Module):
     """Single decoder layer module
@@ -45,7 +47,9 @@ class DecoderLayer(nn.Module):
         :param torch.Tensor memory: encoded source features (batch, max_time_in, size)
         :param torch.Tensor memory_mask: mask for memory (batch, max_time_in)
         """
-        tgt_mask = tgt_mask.cuda()
+
+        if config.use_cuda:
+            tgt_mask = tgt_mask.cuda()
         residual = tgt
         if self.normalize_before:
             tgt = self.norm1(tgt)

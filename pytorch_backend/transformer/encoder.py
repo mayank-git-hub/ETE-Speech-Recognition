@@ -8,6 +8,8 @@ from .positionwise_feed_forward import PositionwiseFeedForward
 from .repeat import repeat
 from .subsampling import Conv2dSubsampling
 
+import config
+
 
 class Encoder(nn.Module):
     """Transformer encoder module
@@ -81,7 +83,8 @@ class Encoder(nn.Module):
 
     def forward(self, xs, masks):
 
-        xs = xs.cuda()
+        if config.use_cuda:
+            xs = xs.cuda()
         """Embed positions in tensor
 
         :param torch.Tensor xs: input tensor

@@ -409,7 +409,10 @@ class E2E(nn.Module):
 			fbank[m - 1, index_2] = ((bin_[m + 1] - index_2.float()) / (
 					bin_[m + 1] - bin_[m])).float()
 
-		self.fbank = [fbank.to(torch.device('cuda:'+str(i))) for i in range(len(config.num_cuda.split(',')))]
+		if config.use_cuda:
+			self.fbank = [fbank.to(torch.device('cuda:'+str(i))) for i in range(len(config.num_cuda.split(',')))]
+		else:
+			self.fbank = [fbank]
 
 	def pre_process(self, data, data_length):
 
@@ -535,6 +538,7 @@ class E2E(nn.Module):
 		# compute loss
 		loss_att = self.criterion(pred_pad, ys_out_pad)
 		self.acc = th_accuracy(pred_pad.view(-1, self.odim), ys_out_pad, ignore_label=self.ignore_id)
+
 
 		# TODO(karita) show predected text
 		# TODO(karita) calculate these stats
@@ -663,7 +667,11 @@ class E2E(nn.Module):
 
 					local_scores = \
 						(1.0 - ctc_weight) * local_att_scores[:, local_best_ids[0]] \
-						+ ctc_weight * torch.from_numpy(ctc_scores - hyp['ctc_score_prev']).cuda()
+						+ ctc_weight * torch.from_numpy(ctc_scores - hyp['ctc_score_prev'])
+
+					if config.use_cuda:
+						local_scores = local_scores.cuda()
+
 					if rnnlm:
 						local_scores += recog_args.lm_weight * local_lm_scores[:, local_best_ids[0]]
 					local_best_scores, joint_best_ids = torch.topk(local_scores, beam, dim=1)

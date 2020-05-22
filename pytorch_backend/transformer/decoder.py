@@ -7,6 +7,8 @@ from .layer_norm import LayerNorm
 from .positionwise_feed_forward import PositionwiseFeedForward
 from .repeat import repeat
 
+import config
+
 
 class Decoder(torch.nn.Module):
     """Transfomer decoder module
@@ -113,7 +115,9 @@ class Decoder(torch.nn.Module):
         :return x: decoded token score before softmax (batch, maxlen_out, token)
         :rtype: torch.Tensor
         """
-        tgt = tgt.cuda()
+
+        if config.use_cuda:
+            tgt = tgt.cuda()
         x = self.embed(tgt)
         x, tgt_mask, memory, memory_mask = self.decoders(x, tgt_mask, memory, None)
         if self.normalize_before:

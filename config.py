@@ -37,8 +37,6 @@ print('Model Save Path: ', model_save_path)
 os.makedirs(model_save_path, exist_ok=True)
 shutil.copyfile('config.py', model_save_path + '/config.py')
 
-use_cuda = True
-
 train_param = {
 	'batch_size': 10*len(num_cuda.split(',')),
 	'num_workers': 8*len(num_cuda.split(',')),
