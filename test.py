@@ -100,8 +100,13 @@ def main():
 	if config.use_cuda:
 		model = model.cuda()
 		model = nn.DataParallel(model)
-
-	checkpoint = torch.load(config.test_model)
+		checkpoint = torch.load(config.test_model)
+	else:
+		moduleCheckpoint = torch.load(config.test_model, map_location={"cuda": "cpu"})
+		checkpoint = {'model': {}}
+		for key in moduleCheckpoint['model']:
+			checkpoint['model'][key[7:]] = moduleCheckpoint['model'][key]
+		
 	model.load_state_dict(checkpoint['model'])
 		
 	test(model)
